@@ -1,0 +1,771 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="Machine Learning, R Programming, Statistics, Artificial Intelligence">
+    <meta name="author" content="Manuel Amunategui">
+    <link rel="icon" href="../favicon.ico">
+
+    <title>Where Are Your Customers Coming From And Where Are They Going - Reporting On Complex Customer Behavior In Plain English With C5.0</title>
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <link href="../ie10-viewport-bug-workaround.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="../blog.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+  </head>
+<body>
+  
+ <div class="blog-masthead">
+    <div class="container">
+      <nav class="blog-nav">
+        <a class="blog-nav-item active" href="../index.html">Home</a>
+        <a class="blog-nav-item" href="https://www.linkedin.com/in/manuel-amunategui-20748923" target='_blank'>Linkedin</a>
+        <a class="blog-nav-item" href="https://www.youtube.com/user/mamunate/videos" target='_blank'>Videos</a>
+        <a class="blog-nav-item" href="https://github.com/amunategui/Feedback/issues/new" target='_blank'>Feedback</a>
+      </nav>
+    </div>
+</div>
+
+<div class="container">
+  <div class="blog-header">
+    <h1 class="blog-title">Where Are Your Customers Coming From And Where Are They Going - Reporting On Complex Customer Behavior In Plain English With C5.0</h1>
+    <p class="lead blog-description">Practical walkthroughs on machine learning, data exploration and finding insight.</p>
+  </div>
+  
+<p style="text-align:center">
+<img src="img/C50-globe.png" alt="C50 Globe" style='padding:1px; border:1px solid #021a40; width: 50%; height: 50%'>
+</p>
+<p><br /><br /></p>
+
+<p><strong>Resources</strong></p>
+<ul>
+<li type="square"><a href="https://www.youtube.com/watch?v=efxtBTXZ8mU&index=1&list=UUq4pm1i_VZqxKVVOz5qRBIA" target="_blank">YouTube Companion Video</a></li>
+</ul>
+<p><br />
+
+
+<p>
+At <a href='http://www.springml.com/' target='_blank'>SpringML</a>, we are known for our customer-facing, colorful, interactive and informative dashboards, and we are very proud of them. As you can imagine, it takes time to build those dashboards, but it also requires a lot of research to decide what to feed into them - what will be the most empowering and pertinent to the customer. In that spirit, we are constantly evaluating new techniques and new tools to better dive into the data and unearth more patterns and bottlenecks.
+</p>
+<p>
+The <a href='https://cran.r-project.org/web/packages/C50/index.html' targer='_blank'>C5.0 Model (C5.0 Decision Trees and Rule-Based Models)</a> is one of those tools. It is a high performing, tree-based classification model. Much like a random forest, it takes random sets of features and measures how they affect a particular outcome. C5.0 outputs a set of complex, non-linear rules describing what features and at what level provide the most lift to the model. It doesn’t even require dummy variables from your categorical data, on the contrary, the closer your features are to the spoken language, the more readable the output. With some prep-work, we can automate the reporting of C5.0 results using a structure similar to the spoken language, something that anybody can understand - no statistics degree required!
+</p>
+
+<BR><BR>
+<H2>Why Are Your Customers Churning?</H2>
+<p>We’ll use the built-in data set supplied with the C5.0 R library, called <code>Customer Churn</code>. As the name implies, the data contains customer information and usage records from a phone company including whether the customer churned or not. Here is a brief sample of the distilled intelligence you can expect from C5.0 - though this is a toy data set, it would seem that full day use, international plans, or customer service calls to be patterns for churn:</p>
+<BR><BR>
+
+<B>
+Out of 489 cases, 82% churned when:
+<ol>
+<li>total_night_minutes > 174</li>
+<li>total_eve_minutes > 241</li>
+<li>total_day_minutes > 224</li>
+</ol>
+
+Out of 416 cases, 61% churned when:
+<ol>
+<li>international_plan == yes</li>
+</ol>
+
+Out of 348 cases, 70% churned when:
+<ol>
+<li>total_day_charge < 38.25</li>
+<li>number_customer_service_calls > 3</li>
+</ol>
+</B>
+   
+
+<BR><BR>
+
+<p>This data set contains two data frames, a training (3333 entries) and testing (1667 entries). We’ll use <code>churnTrain</code> to keep things simple and fix the outcome variable <code>churn</code> to be more readable:</p>
+<pre class="r">
+
+<code># install.packages('C50')
+library(C50)
+data(churn)
+
+churn_data &lt;- churnTrain
+outcome_name &lt;- 'churn'
+
+# make the outcome variable easier to read
+churn_data[,outcome_name] &lt;- as.factor(ifelse(churn_data[,outcome_name]=='yes','Does_Churn', 'Stays'))
+
+str(churn_data)</code></pre>
+<pre><code>## 'data.frame':    3333 obs. of  20 variables:
+##  $ state                        : Factor w/ 51 levels &quot;AK&quot;,&quot;AL&quot;,&quot;AR&quot;,..: 17 36 32 36 37 2 20 25 19 50 ...
+##  $ account_length               : int  128 107 137 84 75 118 121 147 117 141 ...
+##  $ area_code                    : Factor w/ 3 levels &quot;area_code_408&quot;,..: 2 2 2 1 2 3 3 2 1 2 ...
+##  $ international_plan           : Factor w/ 2 levels &quot;no&quot;,&quot;yes&quot;: 1 1 1 2 2 2 1 2 1 2 ...
+##  $ voice_mail_plan              : Factor w/ 2 levels &quot;no&quot;,&quot;yes&quot;: 2 2 1 1 1 1 2 1 1 2 ...
+##  $ number_vmail_messages        : int  25 26 0 0 0 0 24 0 0 37 ...
+##  $ total_day_minutes            : num  265 162 243 299 167 ...
+##  $ total_day_calls              : int  110 123 114 71 113 98 88 79 97 84 ...
+##  $ total_day_charge             : num  45.1 27.5 41.4 50.9 28.3 ...
+##  $ total_eve_minutes            : num  197.4 195.5 121.2 61.9 148.3 ...
+##  $ total_eve_calls              : int  99 103 110 88 122 101 108 94 80 111 ...
+##  $ total_eve_charge             : num  16.78 16.62 10.3 5.26 12.61 ...
+##  $ total_night_minutes          : num  245 254 163 197 187 ...
+##  $ total_night_calls            : int  91 103 104 89 121 118 118 96 90 97 ...
+##  $ total_night_charge           : num  11.01 11.45 7.32 8.86 8.41 ...
+##  $ total_intl_minutes           : num  10 13.7 12.2 6.6 10.1 6.3 7.5 7.1 8.7 11.2 ...
+##  $ total_intl_calls             : int  3 3 5 7 3 6 7 6 4 5 ...
+##  $ total_intl_charge            : num  2.7 3.7 3.29 1.78 2.73 1.7 2.03 1.92 2.35 3.02 ...
+##  $ number_customer_service_calls: int  1 1 0 2 3 0 3 0 1 0 ...
+##  $ churn                        : Factor w/ 2 levels &quot;Does_Churn&quot;,&quot;Stays&quot;: 2 2 2 2 2 2 2 2 2 2 ...</code></pre>
+<BR><BR>
+<h2>Straight up C5.0</h2>
+<p>Let’s first look at the default summary output from C5.0:</p>
+<pre class="r"><code>c50_model &lt;- C5.0(x=churn_data[,setdiff(names(churn_data), outcome_name)], y=churn_data[,outcome_name])
+summary(c50_model)</code></pre>
+
+
+<pre><code>## 
+## Call:
+## C5.0.default(x = churn_data[, setdiff(names(churn_data), outcome_name)],
+##  y = churn_data[, outcome_name], rules = FALSE)
+## 
+## 
+## C5.0 [Release 2.07 GPL Edition]      Tue Dec 27 10:01:02 2016
+## -------------------------------
+## 
+## Class specified by attribute `outcome'
+## 
+## Read 3333 cases (20 attributes) from undefined.data
+## 
+## Decision tree:
+## 
+## total_day_minutes &gt; 264.4:
+## :...voice_mail_plan = yes:
+## :   :...international_plan = no: Stays (45/1)
+## :   :   international_plan = yes: Does_Churn (8/3)
+## :   voice_mail_plan = no:
+## :   :...total_eve_minutes &gt; 187.7:
+## :       :...total_night_minutes &gt; 126.9: Does_Churn (94/1)
+## :       :   total_night_minutes &lt;= 126.9:
+## :       :   :...total_day_minutes &lt;= 277: Stays (4)
+## :       :       total_day_minutes &gt; 277: Does_Churn (3)
+## :       total_eve_minutes &lt;= 187.7:
+## :       :...total_eve_charge &lt;= 12.26: Stays (15/1)
+## :           total_eve_charge &gt; 12.26:
+## :           :...total_day_minutes &lt;= 277:
+## :               :...total_night_minutes &lt;= 224.8: Stays (13)
+## :               :   total_night_minutes &gt; 224.8: Does_Churn (5/1)
+## :               total_day_minutes &gt; 277:
+## :               :...total_night_minutes &gt; 151.9: Does_Churn (18)
+## :                   total_night_minutes &lt;= 151.9:
+## :                   :...account_length &lt;= 123: Stays (4)
+## :                       account_length &gt; 123: Does_Churn (2)
+## total_day_minutes &lt;= 264.4:
+## :...number_customer_service_calls &gt; 3:
+##     :...total_day_minutes &lt;= 160.2:
+##     :   :...total_eve_charge &lt;= 19.83: Does_Churn (79/3)
+##     :   :   total_eve_charge &gt; 19.83:
+##     :   :   :...total_day_minutes &lt;= 120.5: Does_Churn (10)
+##     :   :       total_day_minutes &gt; 120.5: Stays (13/3)
+##     :   total_day_minutes &gt; 160.2:
+##     :   :...total_eve_charge &gt; 12.05: Stays (130/24)
+##     :       total_eve_charge &lt;= 12.05:
+##     :       :...total_eve_calls &lt;= 125: Does_Churn (16/2)
+##     :           total_eve_calls &gt; 125: Stays (3)
+##     number_customer_service_calls &lt;= 3:
+##     :...international_plan = yes:
+##         :...total_intl_calls &lt;= 2: Does_Churn (51)
+##         :   total_intl_calls &gt; 2:
+##         :   :...total_intl_minutes &lt;= 13.1: Stays (173/7)
+##         :       total_intl_minutes &gt; 13.1: Does_Churn (43)
+##         international_plan = no:
+##         :...total_day_minutes &lt;= 223.2: Stays (2221/60)
+##             total_day_minutes &gt; 223.2:
+##             :...total_eve_charge &lt;= 20.5: Stays (295/22)
+##                 total_eve_charge &gt; 20.5:
+##                 :...voice_mail_plan = yes: Stays (20)
+##                     voice_mail_plan = no:
+##                     :...total_night_minutes &gt; 174.2: Does_Churn (50/8)
+##                         total_night_minutes &lt;= 174.2:
+##                         :...total_day_minutes &lt;= 246.6: Stays (12)
+##                             total_day_minutes &gt; 246.6:
+##                             :...total_day_charge &lt;= 43.33: Does_Churn (4)
+##                                 total_day_charge &gt; 43.33: Stays (2)
+## 
+## 
+## Evaluation on training data (3333 cases):
+## 
+##      Decision Tree   
+##    ----------------  
+##    Size      Errors  
+## 
+##      27  136( 4.1%)   &lt;&lt;
+## 
+## 
+##     (a)   (b)    &lt;-classified as
+##    ----  ----
+##     365   118    (a): class Does_Churn
+##      18  2832    (b): class Stays
+## 
+## 
+##  Attribute usage:
+## 
+##  100.00% total_day_minutes
+##   93.67% number_customer_service_calls
+##   87.73% international_plan
+##   20.73% total_eve_charge
+##    8.97% voice_mail_plan
+##    8.01% total_intl_calls
+##    6.48% total_intl_minutes
+##    6.33% total_night_minutes
+##    4.74% total_eve_minutes
+##    0.57% total_eve_calls
+##    0.18% account_length
+##    0.18% total_day_charge
+## 
+## 
+## Time: 0.0 secs</code></pre>
+<BR><BR>
+Note from C5.0: An Informal Tutorial: "For instance, the last leaf of the decision tree is compensated (174.6/24.8), for which n is 174.6 and m is 24.8. The value of n is the number of cases in the file hypothyroid.data that are mapped to this leaf, and m (if it appears) is the number of them that are classified incorrectly by the leaf. (A non-integral number of cases can arise because, when the value of an attribute in the tree is not known, C5.0 splits the case and sends a fraction down each branch.)"<BR>
+<a href='https://www.rulequest.com/see5-unix.html' target='_blank'>C5.0: An Informal Tutorial</a>
+<BR><BR>
+<p>Now, if we turn on <code>rules</code> to TRUE (see ?C5.0: A logical: should the tree be decomposed into a rule-based model?). We get the same output but in a more readable format and that is going to help us get this information into a structured format:</p>
+<pre class="r"><code>c50_model &lt;- C5.0(x=churn_data[,setdiff(names(churn_data), outcome_name)], y=churn_data[,outcome_name], rules = TRUE)
+summary(c50_model)</code></pre>
+<pre><code>## 
+## Call:
+## C5.0.default(x = churn_data[, setdiff(names(churn_data), outcome_name)],
+##  y = churn_data[, outcome_name], rules = TRUE)
+## 
+## 
+## C5.0 [Release 2.07 GPL Edition]      Tue Dec 27 10:01:02 2016
+## -------------------------------
+## 
+## Class specified by attribute `outcome'
+## 
+## Read 3333 cases (20 attributes) from undefined.data
+## 
+## Rules:
+## 
+## Rule 1: (60, lift 6.8)
+##  international_plan = yes
+##  total_intl_calls &lt;= 2
+##  -&gt;  class Does_Churn  [0.984]
+## 
+## Rule 2: (57, lift 6.8)
+##  international_plan = yes
+##  total_intl_minutes &gt; 13.1
+##  -&gt;  class Does_Churn  [0.983]
+## 
+## Rule 3: (32, lift 6.7)
+##  total_day_minutes &lt;= 120.5
+##  number_customer_service_calls &gt; 3
+##  -&gt;  class Does_Churn  [0.971]
+## 
+## Rule 4: (79/3, lift 6.6)
+##  total_day_minutes &lt;= 160.2
+##  total_eve_charge &lt;= 19.83
+##  number_customer_service_calls &gt; 3
+##  -&gt;  class Does_Churn  [0.951]
+## 
+## Rule 5: (43/2, lift 6.4)
+##  international_plan = no
+##  voice_mail_plan = no
+##  total_day_minutes &gt; 246.6
+##  total_eve_charge &gt; 20.5
+##  -&gt;  class Does_Churn  [0.933]
+## 
+## Rule 6: (28/2, lift 6.2)
+##  total_day_minutes &lt;= 264.4
+##  total_eve_calls &lt;= 125
+##  total_eve_charge &lt;= 12.05
+##  number_customer_service_calls &gt; 3
+##  -&gt;  class Does_Churn  [0.900]
+## 
+## Rule 7: (78/8, lift 6.1)
+##  voice_mail_plan = no
+##  total_day_minutes &gt; 223.2
+##  total_eve_charge &gt; 20.5
+##  total_night_minutes &gt; 174.2
+##  -&gt;  class Does_Churn  [0.888]
+## 
+## Rule 8: (114/24, lift 5.4)
+##  voice_mail_plan = no
+##  total_day_minutes &gt; 223.2
+##  total_eve_charge &gt; 20.5
+##  -&gt;  class Does_Churn  [0.784]
+## 
+## Rule 9: (152/58, lift 4.3)
+##  total_day_minutes &gt; 223.2
+##  total_eve_charge &gt; 20.5
+##  -&gt;  class Does_Churn  [0.617]
+## 
+## Rule 10: (211/84, lift 4.1)
+##  total_day_minutes &gt; 264.4
+##  -&gt;  class Does_Churn  [0.601]
+## 
+## Rule 11: (2221/60, lift 1.1)
+##  international_plan = no
+##  total_day_minutes &lt;= 223.2
+##  number_customer_service_calls &lt;= 3
+##  -&gt;  class Stays  [0.973]
+## 
+## Rule 12: (768/20, lift 1.1)
+##  international_plan = no
+##  voice_mail_plan = yes
+##  number_customer_service_calls &lt;= 3
+##  -&gt;  class Stays  [0.973]
+## 
+## Rule 13: (140/5, lift 1.1)
+##  account_length &lt;= 123
+##  total_eve_minutes &lt;= 187.7
+##  total_night_minutes &lt;= 151.9
+##  -&gt;  class Stays  [0.958]
+## 
+## Rule 14: (45/1, lift 1.1)
+##  international_plan = no
+##  voice_mail_plan = yes
+##  total_day_minutes &gt; 264.4
+##  -&gt;  class Stays  [0.957]
+## 
+## Rule 15: (1972/87, lift 1.1)
+##  total_day_minutes &lt;= 264.4
+##  total_intl_minutes &lt;= 13.1
+##  total_intl_calls &gt; 2
+##  number_customer_service_calls &lt;= 3
+##  -&gt;  class Stays  [0.955]
+## 
+## Rule 16: (197/9, lift 1.1)
+##  total_day_minutes &gt; 120.5
+##  total_day_minutes &lt;= 160.2
+##  total_eve_charge &gt; 19.83
+##  -&gt;  class Stays  [0.950]
+## 
+## Rule 17: (155/10, lift 1.1)
+##  voice_mail_plan = no
+##  total_day_minutes &lt;= 277
+##  total_night_minutes &lt;= 126.9
+##  -&gt;  class Stays  [0.930]
+## 
+## Rule 18: (1675/185, lift 1.0)
+##  total_day_minutes &gt; 160.2
+##  total_day_minutes &lt;= 264.4
+##  total_eve_charge &gt; 12.05
+##  -&gt;  class Stays  [0.889]
+## 
+## Rule 19: (434/49, lift 1.0)
+##  total_eve_charge &lt;= 12.26
+##  -&gt;  class Stays  [0.885]
+## 
+## Default class: Stays
+## 
+## 
+## Evaluation on training data (3333 cases):
+## 
+##          Rules     
+##    ----------------
+##      No      Errors
+## 
+##      19  146( 4.4%)   &lt;&lt;
+## 
+## 
+##     (a)   (b)    &lt;-classified as
+##    ----  ----
+##     371   112    (a): class Does_Churn
+##      34  2816    (b): class Stays
+## 
+## 
+##  Attribute usage:
+## 
+##   98.23% total_day_minutes
+##   84.61% number_customer_service_calls
+##   75.73% international_plan
+##   71.83% total_eve_charge
+##   60.97% total_intl_calls
+##   60.88% total_intl_minutes
+##   31.02% voice_mail_plan
+##   10.11% total_night_minutes
+##    4.20% account_length
+##    4.20% total_eve_minutes
+##    0.84% total_eve_calls
+## 
+## 
+## Time: 0.0 secs</code></pre>
+
+<BR><BR>
+<p>Let’s analyze one of the rules:</p>
+<pre class="r"><code>Rule x: (152/58, lift 4.3)
+    total_day_minutes &gt; 223.2
+    total_eve_charge &gt; 20.5
+    -&gt;  class Does_Churn  [0.617]</code></pre>
+<p>It states that 152 cases with <code>total_day_minutes &gt; 223.2</code> and <code>total_eve_charge &gt; 20.5</code> led to <code>churn==Does_Churn</code>. There were <code>152</code> cases fulling the above condition where <code>58</code> failed to lead to the stated outcome. This rule provided a lift of 4.3 in predicting <code>churn</code>.</p>
+<BR><BR>
+<H2>Automating a Report</H2>
+<p>Though the output is interesting and insightful, we need this in a data-frame format so we can build it into our reporting pipeline. Let’s see what we have to work with:</p>
+<pre class="r"><code>head(c50_model$rules)</code></pre>
+<pre><code>## [1] &quot;id=\&quot;See5/C5.0 2.07 GPL Edition 2016-12-27\&quot;\nentries=\&quot;1\&quot;\nrules=\&quot;19\&quot; default=\&quot;Stays\&quot;\nconds=\&quot;2\&quot; cover=\&quot;60\&quot; ok=\&quot;60\&quot; lift=\&quot;6.78932\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;1\&quot; att=\&quot;international_plan\&quot; val=\&quot;yes\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_intl_calls\&quot; cut=\&quot;2\&quot; result=\&quot;&lt;\&quot;\nconds=\&quot;2\&quot; cover=\&quot;57\&quot; ok=\&quot;57\&quot; lift=\&quot;6.78366\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;1\&quot; att=\&quot;international_plan\&quot; val=\&quot;yes\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_intl_minutes\&quot; cut=\&quot;13.1\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;2\&quot; cover=\&quot;32\&quot; ok=\&quot;32\&quot; lift=\&quot;6.69766\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;120.5\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;number_customer_service_calls\&quot; cut=\&quot;3\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;79\&quot; ok=\&quot;76\&quot; lift=\&quot;6.55985\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;160.2\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;19.83\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;number_customer_service_calls\&quot; cut=\&quot;3\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;4\&quot; cover=\&quot;43\&quot; ok=\&quot;41\&quot; lift=\&quot;6.44058\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;1\&quot; att=\&quot;international_plan\&quot; val=\&quot;no\&quot;\ntype=\&quot;1\&quot; att=\&quot;voice_mail_plan\&quot; val=\&quot;no\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;246.60001\&quot; result=\&quot;&gt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;20.5\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;4\&quot; cover=\&quot;28\&quot; ok=\&quot;26\&quot; lift=\&quot;6.21056\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;264.39999\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_calls\&quot; cut=\&quot;125\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;12.05\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;number_customer_service_calls\&quot; cut=\&quot;3\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;4\&quot; cover=\&quot;78\&quot; ok=\&quot;70\&quot; lift=\&quot;6.1243\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;1\&quot; att=\&quot;voice_mail_plan\&quot; val=\&quot;no\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;223.2\&quot; result=\&quot;&gt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;20.5\&quot; result=\&quot;&gt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_night_minutes\&quot; cut=\&quot;174.2\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;114\&quot; ok=\&quot;90\&quot; lift=\&quot;5.41342\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;1\&quot; att=\&quot;voice_mail_plan\&quot; val=\&quot;no\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;223.2\&quot; result=\&quot;&gt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;20.5\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;2\&quot; cover=\&quot;152\&quot; ok=\&quot;94\&quot; lift=\&quot;4.25688\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;223.2\&quot; result=\&quot;&gt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;20.5\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;1\&quot; cover=\&quot;211\&quot; ok=\&quot;127\&quot; lift=\&quot;4.14685\&quot; class=\&quot;Does_Churn\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;264.39999\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;2221\&quot; ok=\&quot;2161\&quot; lift=\&quot;1.13738\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;1\&quot; att=\&quot;international_plan\&quot; val=\&quot;no\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;223.2\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;number_customer_service_calls\&quot; cut=\&quot;3\&quot; result=\&quot;&lt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;768\&quot; ok=\&quot;748\&quot; lift=\&quot;1.13758\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;1\&quot; att=\&quot;international_plan\&quot; val=\&quot;no\&quot;\ntype=\&quot;1\&quot; att=\&quot;voice_mail_plan\&quot; val=\&quot;yes\&quot;\ntype=\&quot;2\&quot; att=\&quot;number_customer_service_calls\&quot; cut=\&quot;3\&quot; result=\&quot;&lt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;140\&quot; ok=\&quot;135\&quot; lift=\&quot;1.12006\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;2\&quot; att=\&quot;account_length\&quot; cut=\&quot;123\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_minutes\&quot; cut=\&quot;187.7\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_night_minutes\&quot; cut=\&quot;151.89999\&quot; result=\&quot;&lt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;45\&quot; ok=\&quot;44\&quot; lift=\&quot;1.11971\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;1\&quot; att=\&quot;international_plan\&quot; val=\&quot;no\&quot;\ntype=\&quot;1\&quot; att=\&quot;voice_mail_plan\&quot; val=\&quot;yes\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;264.39999\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;4\&quot; cover=\&quot;1972\&quot; ok=\&quot;1885\&quot; lift=\&quot;1.11734\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;264.39999\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_intl_minutes\&quot; cut=\&quot;13.1\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_intl_calls\&quot; cut=\&quot;2\&quot; result=\&quot;&gt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;number_customer_service_calls\&quot; cut=\&quot;3\&quot; result=\&quot;&lt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;197\&quot; ok=\&quot;188\&quot; lift=\&quot;1.11071\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;120.5\&quot; result=\&quot;&gt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;160.2\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;19.83\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;155\&quot; ok=\&quot;145\&quot; lift=\&quot;1.08754\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;1\&quot; att=\&quot;voice_mail_plan\&quot; val=\&quot;no\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;277\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_night_minutes\&quot; cut=\&quot;126.9\&quot; result=\&quot;&lt;\&quot;\nconds=\&quot;3\&quot; cover=\&quot;1675\&quot; ok=\&quot;1490\&quot; lift=\&quot;1.03976\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;160.2\&quot; result=\&quot;&gt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_day_minutes\&quot; cut=\&quot;264.39999\&quot; result=\&quot;&lt;\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;12.05\&quot; result=\&quot;&gt;\&quot;\nconds=\&quot;1\&quot; cover=\&quot;434\&quot; ok=\&quot;385\&quot; lift=\&quot;1.03536\&quot; class=\&quot;Stays\&quot;\ntype=\&quot;2\&quot; att=\&quot;total_eve_charge\&quot; cut=\&quot;12.26\&quot; result=\&quot;&lt;\&quot;\n&quot;</code></pre>
+<BR><BR>
+<p>Yes, its a mess! But don’t despair, we’ll <code>strsplit</code> our way out of this and make it all come together:</p>
+<pre class="r"><code>
+rule_munger &lt;- capture.output(c50_model$rules , split = TRUE)
+rule_munger &lt;- strsplit(rule_munger,'\\\\n')
+rule_munger &lt;-  gsub(x = rule_munger[[1]], pattern = '\\\\|\&quot;', replacement = '')[-1]
+head(rule_munger,6)</code></pre>
+<pre><code>## [1] &quot;entries=1&quot;                                           
+## [2] &quot;rules=19 default=Stays&quot;                              
+## [3] &quot;conds=2 cover=60 ok=60 lift=6.78932 class=Does_Churn&quot;
+## [4] &quot;type=1 att=international_plan val=yes&quot;               
+## [5] &quot;type=2 att=total_intl_calls cut=2 result=&lt;&quot;          
+## [6] &quot;conds=2 cover=57 ok=57 lift=6.78366 class=Does_Churn&quot;</code></pre>
+<BR><BR>
+<p>Much better, right?</p>
+<p>The output is a bit different so let’s look at it again. It states that C5.0 found 19 <code>rules</code> in total. The first rule has 2 conditions with a <code>cover</code> of 60 (60 rows found with 100% success rate) and a <code>lift</code> of 6.78932 for predicting <code>churn==yes</code>. The <code>type</code> represents the type of condition (like numeric, logical, categorical, etc). The first condition has an attribute value of <code>international_pal==yes</code> and <code>total_intl_calls &lt; 2</code>. There you have it, a rule that is practically readable.</p>
+
+<BR><BR>
+<h2>Reporting Magic</h2>
+<p>To make this easier on all of us, we’re going to build a function called <code>interesting_interactions</code> that will format this automatically and return a compact data frame.</p>
+<pre class="r"><code>
+
+
+interesting_interactions <- function(the_data_frame, outcome_name) {
+  # install.packages(...) if missing
+  require(C50)
+  require(dplyr)
+  
+  c5model <- C5.0(
+    x = the_data_frame[,setdiff(names(the_data_frame), outcome_name)],
+    y = the_data_frame[,outcome_name],
+    rules = TRUE
+  )
+  
+  rule_munger <- capture.output(c5model$rules , split = TRUE)
+  rule_munger <- strsplit(rule_munger,'\\\\n')
+  rule_munger <- gsub(x = rule_munger[[1]], pattern = '\\\\|\"', replacement = '')[-1]
+  
+  # extract results into data frame format
+  rule_count <- 0
+  conds_last <- 0
+  cover_last <- 0
+  ok_last <- 0
+  lift_last <-  0
+  class_last <- 0
+  
+  rules <- c()
+  for (entry in rule_munger) {
+    print(entry)
+    if (substr(entry,1,5) == 'rules')
+      print(entry)
+    
+    # track only lines starting with conds or type - ignore rest
+    if (substr(entry,1,5) == 'conds' |
+        substr(entry,1,4) == 'type') {
+      if (substr(entry,1,5) == 'conds') {
+        rule_count <- rule_count + 1
+        conds_last <-
+          strsplit(x = strsplit(x = entry, split = " ")[[1]][1], split = '=')[[1]][2]
+        # cover is the number of training cases covered by the rule
+        cover_last <-
+          strsplit(x = strsplit(x = entry, split = " ")[[1]][2], split = '=')[[1]][2]
+        # ok is the number of positives covered by class,
+        ok_last <-
+          strsplit(x = strsplit(x = entry, split = " ")[[1]][3], split = '=')[[1]][2]
+        # lift is the estimated accuracy of the rule
+        lift_last <-
+          strsplit(x = strsplit(x = entry, split = " ")[[1]][4], split = '=')[[1]][2]
+        # class predicted by
+        class_last <-
+          strsplit(x = strsplit(x = entry, split = " ")[[1]][5], split = '=')[[1]][2]
+      }
+      
+      if (substr(entry,1,4) == 'type') {
+        # variable type
+        type_last <-
+          strsplit(x = strsplit(x = entry, split = " ")[[1]][1], split = '=')[[1]][2]
+        att_last <-
+          strsplit(x = strsplit(x = entry, split = " ")[[1]][2], split = '=')[[1]][2]
+        
+        # sniff out optional parameters
+        elts_last <- ''
+        if (grepl(x = entry, pattern = 'elts')) {
+          elts_last <- strsplit(x = entry, split = "elts=")[[1]][2]
+        }
+        
+        cut_last <- ''
+        if (grepl(x = entry, pattern = 'cut')) {
+          cut_last <-
+            strsplit(
+              x = strsplit(
+                x = entry, split = "cut="
+              )[[1]][2], split = ' '
+            )[[1]][1]
+        }
+        
+        val_last <- ''
+        if (grepl(x = entry, pattern = 'val')) {
+          val_last <- strsplit(x = entry, split = "val=")[[1]][2]
+        }
+        
+        result_last <- ''
+        if (grepl(x = entry, pattern = 'result')) {
+          result_last <- strsplit(x = entry, split = "result=")[[1]][2]
+        }
+        
+        rules <- rbind(
+          rules, c(
+            rule_count,
+            conds_last,
+            cover_last,
+            ok_last,
+            lift_last,
+            type_last,
+            att_last,
+            elts_last,
+            result_last,
+            cut_last,
+            val_last,
+            class_last
+          )
+        )
+      }
+      
+    }
+    
+  }
+  if (!is.null(rules)) {
+    
+    rules <- data.frame(rules)
+    
+    names(rules) <-
+      c(
+        'rule_number', 'conditions', 'cover', 'true_pos',
+        'lift', 'type', 'attribute', 'elts', 'cut', 'result',
+        'value', 'outcome'
+      )
+    rules[, 1:6] <- sapply(rules[, 1:6], as.character)
+    rules[, 1:6] <- sapply(rules[, 1:6], as.numeric)
+    
+    if (length(unique(rules$rule_number) > 0)) {
+      rules %>% dplyr::arrange(desc(lift)) -> rules
+    }
+    
+  }
+  return (rules)
+}
+
+
+</code></pre>
+<BR><BR>
+<p>Now that we built this function, let’s take it for a spin and see what it what we can learn about our churning and non-churning customers.</p>
+<pre class="r"><code>results &lt;- interesting_interactions(the_data_frame = churn_data, outcome_name = outcome_name)</code></pre>
+
+<pre class="r"><code>print(head(results, 10))</code></pre>
+<pre><code>##    rule_number conditions cover true_pos    lift type
+## 1            1          2    60       60 6.78932    1
+## 2            1          2    60       60 6.78932    2
+## 3            2          2    57       57 6.78366    1
+## 4            2          2    57       57 6.78366    2
+## 5            3          2    32       32 6.69766    2
+## 6            3          2    32       32 6.69766    2
+## 7            4          3    79       76 6.55985    2
+## 8            4          3    79       76 6.55985    2
+## 9            4          3    79       76 6.55985    2
+## 10           5          4    43       41 6.44058    1
+##                        attribute elts cut result value    outcome
+## 1             international_plan                   yes Does_Churn
+## 2               total_intl_calls        &lt;      2       Does_Churn
+## 3             international_plan                   yes Does_Churn
+## 4             total_intl_minutes        &gt;   13.1       Does_Churn
+## 5              total_day_minutes        &lt;  120.5       Does_Churn
+## 6  number_customer_service_calls        &gt;      3       Does_Churn
+## 7              total_day_minutes        &lt;  160.2       Does_Churn
+## 8               total_eve_charge        &lt;  19.83       Does_Churn
+## 9  number_customer_service_calls        &gt;      3       Does_Churn
+## 10            international_plan                    no Does_Churn</code></pre>
+<BR><BR>
+<p>We can take this one step further and build a report-generating function. Something that can peel the conditions apart and weave them into a sentence:</p>
+<pre class="r"><code>
+# rules report
+print_rules <- function(rules_found, rulenum) {
+  print('')
+  print(paste0('Rule #', rulenum))
+  dplyr::filter(rules_found, rule_number == rulenum) -> pulled_rule
+  dplyr::select(pulled_rule, cover, true_pos, outcome) %>% head(1) -> rule_def
+  dplyr::select(pulled_rule, attribute, elts, cut, result, value) -> conditions
+  
+  print(paste0('In ', rule_def$cover, ' cases, ', round(rule_def$true_pos/rule_def$cover,2)*100, '% customers ',
+               as.character(rule_def$outcome),' when:'))
+  
+  for (cond_id in seq(nrow(conditions))) {
+    cond <- conditions[cond_id,]
+    #attribute elts cut result value
+    if (nchar(as.character(cond$elts)) > 0) {
+      print(paste0(cond$attribute, 
+                   ': ', cond$elts))
+    } else if (nchar(as.character(cond$value)) > 0) {
+      print(paste0(cond$attribute, 
+                   ' == ', cond$value))
+    } else {
+      print(paste0(cond$attribute, " ", cond$cut, " ", cond$result))
+    }
+  }
+  print('')
+}
+</code></pre>
+<pre class="r"><code>
+# collate interesting rules into report format - top x rules found sorted by lift
+for (rule_number in unique(results$rule_number))
+  print_rules(results, rule_number)
+</code></pre>
+<pre><code>## [1] &quot;&quot;
+## [1] &quot;Rule #1&quot;
+## [1] &quot;In 60 cases, 100% customers Does_Churn when:&quot;
+## [1] &quot;international_plan == yes&quot;
+## [1] &quot;total_intl_calls &lt; 2&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #2&quot;
+## [1] &quot;In 57 cases, 100% customers Does_Churn when:&quot;
+## [1] &quot;international_plan == yes&quot;
+## [1] &quot;total_intl_minutes &gt; 13.1&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #3&quot;
+## [1] &quot;In 32 cases, 100% customers Does_Churn when:&quot;
+## [1] &quot;total_day_minutes &lt; 120.5&quot;
+## [1] &quot;number_customer_service_calls &gt; 3&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #4&quot;
+## [1] &quot;In 79 cases, 96% customers Does_Churn when:&quot;
+## [1] &quot;total_day_minutes &lt; 160.2&quot;
+## [1] &quot;total_eve_charge &lt; 19.83&quot;
+## [1] &quot;number_customer_service_calls &gt; 3&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #5&quot;
+## [1] &quot;In 43 cases, 95% customers Does_Churn when:&quot;
+## [1] &quot;international_plan == no&quot;
+## [1] &quot;voice_mail_plan == no&quot;
+## [1] &quot;total_day_minutes &gt; 246.60001&quot;
+## [1] &quot;total_eve_charge &gt; 20.5&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #6&quot;
+## [1] &quot;In 28 cases, 93% customers Does_Churn when:&quot;
+## [1] &quot;total_day_minutes &lt; 264.39999&quot;
+## [1] &quot;total_eve_calls &lt; 125&quot;
+## [1] &quot;total_eve_charge &lt; 12.05&quot;
+## [1] &quot;number_customer_service_calls &gt; 3&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #7&quot;
+## [1] &quot;In 78 cases, 90% customers Does_Churn when:&quot;
+## [1] &quot;voice_mail_plan == no&quot;
+## [1] &quot;total_day_minutes &gt; 223.2&quot;
+## [1] &quot;total_eve_charge &gt; 20.5&quot;
+## [1] &quot;total_night_minutes &gt; 174.2&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #8&quot;
+## [1] &quot;In 114 cases, 79% customers Does_Churn when:&quot;
+## [1] &quot;voice_mail_plan == no&quot;
+## [1] &quot;total_day_minutes &gt; 223.2&quot;
+## [1] &quot;total_eve_charge &gt; 20.5&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #9&quot;
+## [1] &quot;In 152 cases, 62% customers Does_Churn when:&quot;
+## [1] &quot;total_day_minutes &gt; 223.2&quot;
+## [1] &quot;total_eve_charge &gt; 20.5&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #10&quot;
+## [1] &quot;In 211 cases, 60% customers Does_Churn when:&quot;
+## [1] &quot;total_day_minutes &gt; 264.39999&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #12&quot;
+## [1] &quot;In 768 cases, 97% customers Stays when:&quot;
+## [1] &quot;international_plan == no&quot;
+## [1] &quot;voice_mail_plan == yes&quot;
+## [1] &quot;number_customer_service_calls &lt; 3&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #11&quot;
+## [1] &quot;In 2221 cases, 97% customers Stays when:&quot;
+## [1] &quot;international_plan == no&quot;
+## [1] &quot;total_day_minutes &lt; 223.2&quot;
+## [1] &quot;number_customer_service_calls &lt; 3&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #13&quot;
+## [1] &quot;In 140 cases, 96% customers Stays when:&quot;
+## [1] &quot;account_length &lt; 123&quot;
+## [1] &quot;total_eve_minutes &lt; 187.7&quot;
+## [1] &quot;total_night_minutes &lt; 151.89999&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #14&quot;
+## [1] &quot;In 45 cases, 98% customers Stays when:&quot;
+## [1] &quot;international_plan == no&quot;
+## [1] &quot;voice_mail_plan == yes&quot;
+## [1] &quot;total_day_minutes &gt; 264.39999&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #15&quot;
+## [1] &quot;In 1972 cases, 96% customers Stays when:&quot;
+## [1] &quot;total_day_minutes &lt; 264.39999&quot;
+## [1] &quot;total_intl_minutes &lt; 13.1&quot;
+## [1] &quot;total_intl_calls &gt; 2&quot;
+## [1] &quot;number_customer_service_calls &lt; 3&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #16&quot;
+## [1] &quot;In 197 cases, 95% customers Stays when:&quot;
+## [1] &quot;total_day_minutes &gt; 120.5&quot;
+## [1] &quot;total_day_minutes &lt; 160.2&quot;
+## [1] &quot;total_eve_charge &gt; 19.83&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #17&quot;
+## [1] &quot;In 155 cases, 94% customers Stays when:&quot;
+## [1] &quot;voice_mail_plan == no&quot;
+## [1] &quot;total_day_minutes &lt; 277&quot;
+## [1] &quot;total_night_minutes &lt; 126.9&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #18&quot;
+## [1] &quot;In 1675 cases, 89% customers Stays when:&quot;
+## [1] &quot;total_day_minutes &gt; 160.2&quot;
+## [1] &quot;total_day_minutes &lt; 264.39999&quot;
+## [1] &quot;total_eve_charge &gt; 12.05&quot;
+## [1] &quot;&quot;
+## [1] &quot;&quot;
+## [1] &quot;Rule #19&quot;
+## [1] &quot;In 434 cases, 89% customers Stays when:&quot;
+## [1] &quot;total_eve_charge &lt; 12.26&quot;
+## [1] &quot;&quot;</code></pre>
+<BR><BR>
+<p>Though the output is somewhat customized compared to the original C5.0 output - the beauty here is that you now hold all the rules in a structured format and can customize to your heart's content!</p>
+
+<p><b>Thanks again for the artwork, Lucas!!</b></p>
+
+
+
+  
+</div>   
+</body>
+</html>
